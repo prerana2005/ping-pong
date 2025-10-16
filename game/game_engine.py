@@ -1,4 +1,5 @@
 import pygame
+import os
 from .paddle import Paddle
 from .ball import Ball
 
@@ -11,19 +12,25 @@ class GameEngine:
         self.paddle_width = 10
         self.paddle_height = 100
 
-        # paddles and ball
         self.player = Paddle(10, height // 2 - 50, self.paddle_width, self.paddle_height)
         self.ai = Paddle(width - 20, height // 2 - 50, self.paddle_width, self.paddle_height)
         self.ball = Ball(width // 2, height // 2, 7, 7, width, height)
 
-        # scoring and game state
+        # Scoring and states
         self.player_score = 0
         self.ai_score = 0
-        self.winning_score = 5  # default
+        self.winning_score = 5
         self.state = "PLAYING"  # PLAYING, GAME_OVER, REPLAY_MENU
         self.game_over_start_time = None
         self.winner_text = ""
         self.font = pygame.font.SysFont("Arial", 30)
+
+        # --- Sound setup ---
+        pygame.mixer.init()
+        assets_path = os.path.join(os.path.dirname(__file__), "assets")
+        self.sound_paddle = pygame.mixer.Sound(os.path.join(assets_path, "sound_paddle.wav"))
+        self.sound_wall = pygame.mixer.Sound(os.path.join(assets_path, "sound_wall.wav"))
+        self.sound_score = pygame.mixer.Sound(os.path.join(assets_path, "sound_score.wav"))
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -55,19 +62,20 @@ class GameEngine:
 
         # --- PLAYING state ---
         if self.state == "PLAYING":
-            self.ball.move()
-            self.ball.check_collision(self.player, self.ai)
+            self.ball.move(sound_wall=self.sound_wall)
+            self.ball.check_collision(self.player, self.ai, sound_paddle=self.sound_paddle)
 
             if self.ball.x <= 0:
                 self.ai_score += 1
+                self.sound_score.play()
                 self.ball.reset()
             elif self.ball.x >= self.width:
                 self.player_score += 1
+                self.sound_score.play()
                 self.ball.reset()
 
             self.ai.auto_track(self.ball, self.height)
 
-            # check winner
             if self.player_score >= self.winning_score:
                 self.winner_text = "PLAYER WINS!"
                 self.state = "GAME_OVER"
@@ -88,13 +96,11 @@ class GameEngine:
         screen.fill((0, 0, 0))
 
         if self.state == "PLAYING":
-            # draw ball and paddles
             pygame.draw.rect(screen, WHITE, self.player.rect())
             pygame.draw.rect(screen, WHITE, self.ai.rect())
             pygame.draw.ellipse(screen, WHITE, self.ball.rect())
             pygame.draw.aaline(screen, WHITE, (self.width//2, 0), (self.width//2, self.height))
 
-            # draw scores
             player_text = self.font.render(str(self.player_score), True, WHITE)
             ai_text = self.font.render(str(self.ai_score), True, WHITE)
             screen.blit(player_text, (self.width//4, 20))
