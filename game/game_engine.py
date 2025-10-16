@@ -3,7 +3,6 @@ from .paddle import Paddle
 from .ball import Ball
 
 # Game Engine
-
 WHITE = (255, 255, 255)
 
 class GameEngine:
@@ -19,6 +18,9 @@ class GameEngine:
 
         self.player_score = 0
         self.ai_score = 0
+        self.winning_score = 5  # score to win
+        self.game_over = False
+        self.winner_text = ""
         self.font = pygame.font.SysFont("Arial", 30)
 
     def handle_input(self):
@@ -29,6 +31,9 @@ class GameEngine:
             self.player.move(10, self.height)
 
     def update(self):
+        if self.game_over:
+            return  # stop updates when game is over
+
         self.ball.move()
         self.ball.check_collision(self.player, self.ai)
 
@@ -41,15 +46,38 @@ class GameEngine:
 
         self.ai.auto_track(self.ball, self.height)
 
-    def render(self, screen):
-        # Draw paddles and ball
-        pygame.draw.rect(screen, WHITE, self.player.rect())
-        pygame.draw.rect(screen, WHITE, self.ai.rect())
-        pygame.draw.ellipse(screen, WHITE, self.ball.rect())
-        pygame.draw.aaline(screen, WHITE, (self.width//2, 0), (self.width//2, self.height))
+        # check for game over
+        if self.player_score >= self.winning_score:
+            self.game_over = True
+            self.winner_text = "PLAYER WINS"
+            self.end_time = pygame.time.get_ticks()
+        elif self.ai_score >= self.winning_score:
+            self.game_over = True
+            self.winner_text = "AI WINS"
+            self.end_time = pygame.time.get_ticks()
 
-        # Draw score
-        player_text = self.font.render(str(self.player_score), True, WHITE)
-        ai_text = self.font.render(str(self.ai_score), True, WHITE)
-        screen.blit(player_text, (self.width//4, 20))
-        screen.blit(ai_text, (self.width * 3//4, 20))
+    def render(self, screen):
+        screen.fill((0, 0, 0))
+
+        if not self.game_over:
+            # draw paddles and ball
+            pygame.draw.rect(screen, WHITE, self.player.rect())
+            pygame.draw.rect(screen, WHITE, self.ai.rect())
+            pygame.draw.ellipse(screen, WHITE, self.ball.rect())
+            pygame.draw.aaline(screen, WHITE, (self.width//2, 0), (self.width//2, self.height))
+
+            # draw scores
+            player_text = self.font.render(str(self.player_score), True, WHITE)
+            ai_text = self.font.render(str(self.ai_score), True, WHITE)
+            screen.blit(player_text, (self.width//4, 20))
+            screen.blit(ai_text, (self.width * 3//4, 20))
+        else:
+            # game over screen
+            text_surface = self.font.render(self.winner_text, True, WHITE)
+            text_rect = text_surface.get_rect(center=(self.width//2, self.height//2))
+            screen.blit(text_surface, text_rect)
+
+            # keep message visible for 3 seconds
+            if pygame.time.get_ticks() - self.end_time > 3000:
+                pygame.quit()
+                exit()
