@@ -15,15 +15,35 @@ class Ball:
         self.velocity_y = random.choice([-3, 3])
 
     def move(self):
-        self.x += self.velocity_x
-        self.y += self.velocity_y
+        # Predict next position
+        next_x = self.x + self.velocity_x
+        next_y = self.y + self.velocity_y
 
-        if self.y <= 0 or self.y + self.height >= self.screen_height:
+        # Update Y first and bounce off top/bottom
+        self.y = next_y
+        if self.y <= 0:
+            self.y = 0
+            self.velocity_y *= -1
+        elif self.y + self.height >= self.screen_height:
+            self.y = self.screen_height - self.height
             self.velocity_y *= -1
 
+        # Apply horizontal motion separately (collision handled externally)
+        self.x = next_x
+
     def check_collision(self, player, ai):
-        if self.rect().colliderect(player.rect()) or self.rect().colliderect(ai.rect()):
-            self.velocity_x *= -1
+        ball_rect = self.rect()
+
+        # --- Player paddle collision ---
+        if ball_rect.colliderect(player.rect()):
+            # Place the ball flush with the paddle edge
+            self.x = player.rect().right
+            self.velocity_x = abs(self.velocity_x)  # Ensure it moves right
+
+        # --- AI paddle collision ---
+        elif ball_rect.colliderect(ai.rect()):
+            self.x = ai.rect().left - self.width
+            self.velocity_x = -abs(self.velocity_x)  # Ensure it moves left
 
     def reset(self):
         self.x = self.original_x
